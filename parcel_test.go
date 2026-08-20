@@ -2,10 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -30,10 +31,7 @@ func getTestParcel() Parcel {
 func TestAddGetDelete(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		fmt.Println("Ошибка открытия БД:", err)
-		return
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -41,59 +39,24 @@ func TestAddGetDelete(t *testing.T) {
 
 	// add
 	id, err := store.Add(parcel)
-	if err != nil {
-		fmt.Println("Ошибка при добавлении посылки:", err)
-		return
-	}
-	if id <= 0 {
-		fmt.Println("Неверный ID после добавления:", id)
-		return
-	}
-	parcel.Number = id
-	fmt.Printf("Добавлено: №%d\n", id)
+	require.NoError(t, err)
 
 	// get
 	getParcel, err := store.Get(id)
-	if err != nil {
-		fmt.Println("Ошибка при получении посылки:", err)
-		return
-	}
-
-	if getParcel.Number != parcel.Number ||
-		getParcel.Client != parcel.Client ||
-		getParcel.Status != parcel.Status ||
-		getParcel.Address != parcel.Address {
-		fmt.Println("Поля не совпадают!")
-		fmt.Printf("Ожидалось: %+v\nПолучено: %+v\n", parcel, getParcel)
-		return
-	}
-	fmt.Printf("Получено: №%d, адрес %s, статус %s\n", getParcel.Number, getParcel.Address, getParcel.Status)
+	require.NoError(t, err)
+	require.Equal(t, id, getParcel.Number)
 
 	// delete
 	err = store.Delete(id)
-	if err != nil {
-		fmt.Println("Ошибка при удалении посылки:", err)
-		return
-	}
-	fmt.Printf("Удалено: №%d\n", id)
-
+	require.NoError(t, err)
 	_, err = store.Get(id)
-	if err == nil {
-		fmt.Println("ОШИБКА: после удаления посылка всё ещё находится!")
-		return
-	}
-	fmt.Printf("Проверка удаления: корректно вернула ошибку: %v\n", err)
-
-	fmt.Println("TestAddGetDelete: OK")
+	require.Error(t, err)
 }
+
 func TestSetAddress(t *testing.T) {
 	// prepare
-
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		fmt.Println("Ошибка открытия БД:", err)
-		return
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -101,50 +64,24 @@ func TestSetAddress(t *testing.T) {
 	// add
 	parcel := getTestParcel()
 	id, err := store.Add(parcel)
-	if err != nil {
-		fmt.Println("Ошибка при добавлении посылки:", err)
-		return
-	}
-	if id <= 0 {
-		fmt.Println("Неверный ID после добавления:", id)
-		return
-	}
-	parcel.Number = id
-	fmt.Printf("Добавлено: №%d\n", id)
+	require.NoError(t, err)
 
 	// set address
 	newAddress := "new test address"
 	err = store.SetAddress(id, newAddress)
-	if err != nil {
-		fmt.Println("Ошибка при обновлении адреса:", err)
-		return
-	}
-	fmt.Printf("Адрес обновлён на: %s\n", newAddress)
+	require.NoError(t, err)
 
 	// check
 	updatedParcel, err := store.Get(id)
-	if err != nil {
-		fmt.Println("Ошибка при получении посылки после обновления:", err)
-		return
-	}
-
-	if updatedParcel.Address != newAddress {
-		fmt.Println("ОШИБКА: адрес не обновился!")
-		fmt.Printf("Ожидалось: %s\nПолучено: %s\n", newAddress, updatedParcel.Address)
-		return
-	}
-
-	fmt.Println("TestSetAddress: OK")
+	require.NoError(t, err)
+	require.Equal(t, newAddress, updatedParcel.Address)
 }
 
 // TestSetStatus проверяет обновление статуса
 func TestSetStatus(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		fmt.Println("Ошибка открытия БД:", err)
-		return
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -152,48 +89,24 @@ func TestSetStatus(t *testing.T) {
 	// add
 	parcel := getTestParcel()
 	id, err := store.Add(parcel)
-	if err != nil {
-		fmt.Println("Ошибка при добавлении посылки:", err)
-		return
-	}
-	if id <= 0 {
-		fmt.Println("Неверный ID после добавления:", id)
-		return
-	}
-	parcel.Number = id
-	fmt.Printf("Добавлено: №%d\n", id)
+	require.NoError(t, err)
 
 	// set status
 	newStatus := ParcelStatusSent
 	err = store.SetStatus(id, newStatus)
-	if err != nil {
-		fmt.Println("Ошибка при обновлении статуса:", err)
-		return
-	}
-	fmt.Printf("Статус обновлён на: %v\n", newStatus)
+	require.NoError(t, err)
 
 	// check
 	updateParcel, err := store.Get(id)
-	if err != nil {
-		fmt.Println("Ошибка при получении посылки после обновления:", err)
-		return
-	}
-	if updateParcel.Status != newStatus {
-		fmt.Println("ОШИБКА: статус не обновился!")
-		fmt.Printf("Ожидалось: %v\nПолучено: %v\n", newStatus, updateParcel.Status)
-		return
-	}
-	fmt.Println("TestSetStatus: OK (статус успешно обновлён)")
+	require.NoError(t, err)
+	require.Equal(t, newStatus, updateParcel.Status)
 }
 
 // TestGetByClient проверяет получение посылок по идентификатору клиента
 func TestGetByClient(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		fmt.Println("Ошибка открытия БД:", err)
-		return
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -214,14 +127,7 @@ func TestGetByClient(t *testing.T) {
 	// add
 	for i := 0; i < len(parcels); i++ {
 		id, err := store.Add(parcels[i])
-		if err != nil {
-			fmt.Printf("Ошибка при добавлении посылки №%d: %v\n", i, err)
-			return
-		}
-		if id <= 0 {
-			fmt.Printf("Неверный ID для посылки №%d: %d\n", i, id)
-			return
-		}
+		require.NoError(t, err)
 
 		// обновляем идентификатор добавленной у посылки
 		parcels[i].Number = id
@@ -229,43 +135,18 @@ func TestGetByClient(t *testing.T) {
 		// сохраняем добавленную посылку в структуру map, чтобы её можно было легко достать по идентификатору посылки
 		parcelMap[id] = parcels[i]
 	}
-	fmt.Printf("Добавлено %d посылок для клиента %d\n", len(parcels), client)
 
 	// get by client
 	storedParcels, err := store.GetByClient(client)
-	if err != nil {
-		fmt.Println("Ошибка при получении посылок по клиенту:", err)
-		return
-	}
-	if len(storedParcels) != len(parcels) {
-		fmt.Printf("Количество не совпадает! Ожидалось: %d, получено: %d\n",
-			len(parcels), len(storedParcels))
-		return
-	}
-	fmt.Printf("Получено %d посылок — количество верное\n", len(storedParcels))
 
 	// check
 	for _, parcel := range storedParcels {
 		original, ok := parcelMap[parcel.Number]
-		if !ok {
-			fmt.Printf("Посылка с ID=%d не найдена в карте добавленных\n", p.Number)
-			return
-		}
+		require.True(t, ok, "Посылка с ID=%d не найдена в карте добавленных", parcel.Number)
 
-		if parcel.Client != original.Client ||
-			parcel.Status != original.Status ||
-			parcel.Address != original.Address ||
-			parcel.CreatedAt != original.CreatedAt {
-			fmt.Printf("Поля не совпадают для посылки ID=%d\n", parcel.Number)
-			fmt.Printf("  Ожидалось: Client=%d, Status=%v, Address=%s, CreatedAt=%s\n",
-				original.Client, original.Status, original.Address, original.CreatedAt)
-			fmt.Printf("  Получено:  Client=%d, Status=%v, Address=%s, CreatedAt=%s\n",
-				parcel.Client, parcel.Status, parcel.Address, parcel.CreatedAt)
-			return
-			// в parcelMap лежат добавленные посылки, ключ - идентификатор посылки, значение - сама посылка
-			// убедитесь, что все посылки из storedParcels есть в parcelMap
-			// убедитесь, что значения полей полученных посылок заполнены верно
-		}
+		require.Equal(t, original.Client, parcel.Client)
+		require.Equal(t, original.Status, parcel.Status)
+		require.Equal(t, original.Address, parcel.Address)
+		require.Equal(t, original.CreatedAt, parcel.CreatedAt)
 	}
-	fmt.Println("TestGetByClient: OK (все посылки найдены и поля совпадают)")
 }
